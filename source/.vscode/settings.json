@@ -1,0 +1,6 @@
+{
+    "restructuredtext.linter.extraArgs": [
+        "--ignore D002",
+        "--ignore D004"
+    ]
+}
