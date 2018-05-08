@@ -169,9 +169,127 @@ y轴显示了它们的强度（也叫做幅度）。
 .. figure:: images/thinkdsp004.png
     :alt: Segment from a mixture of two sinusoid signals
 
-    图1.2：不同频率的两个正弦信号的合成信号波形
+    图1.4：不同频率的两个正弦信号的合成信号波形
 
+1.4 读写波形数据
+------------------
 
+``thinkdsp`` 提供 ``read_wave`` 函数从 WAV 文件中读取数据并返回一个 ``Wave`` 对象::
+
+    violin_wave = thinkdsp.read_wave('input.wav')
+
+``Wave`` 对象提供了 ``write_wave`` 方法将数据写入到 WAV 文件中::
+
+    wave.write(filename='output.wav')
+
+你可以用任意的媒体播放器来播放这些 WAV 文件。 在 UNIX 系统中，我通常使用 ``aplay`` ，这是一个简单而健壮的播放器，
+多数的Linux发行版中都包含这个程序
+
+``thinkdsp`` 也提供了一个直接播放声音的函数 ``play_wave`` ，它会在一个子进程中运行播放器来播放音频数据::
+
+    thinkdsp.play_wave(filename='output.wav', player='aplay')
+
+上面的代码中使用了默认的播放器 ``aplay`` ，当然你也可以通过 ``player`` 来指定其他的播放器。
+
+1.5 频谱
+----------
+
+``Wave`` 中提供了 ``make_spectrum`` 来生成频谱 ``Spectrum`` ::
+
+    spectrum = wave.make_spectrum()
+
+``Spectrum`` 同样也提供了 ``plot`` 方法用于作图::
+
+    spectrum.plot()
+    thinkplot.show()
+
+我在 ``thinkplot`` 模块中包装了一些常用的 ``pyplot`` 方法，这个模块也包含在本书的代码仓库中。
+
+``Spectrum`` 提供了三个方法来对频谱进行变化：
+
+* ``low_pass`` 会对频谱应用一个低通滤波器，也就是说，高于给定截止频率的分量会被衰减（幅度减小），
+  衰减的程度由 ``factor`` 指定，通常为一个 [0, 1] 的数，默认为 0 （完全衰减）。 
+
+* ``high_pass`` 会对频谱应用一个高通滤波器，也就是说，低于给定截止频率的分量会被衰减。
+
+* ``band_stop`` 会对频谱应用一个带通滤波器，也就是说，在给定截止频率区间以外的分量会被衰减。
+
+以下的代码将频谱的600Hz以上的频率成分衰减了99%::
+
+    spectrum.low_pass(cutoff=600, factor=0.01)
+
+低通滤波器去除了声音中的明亮的高频声音，使声音变得比较低沉。你可以通过将频谱转换为波形后来播放它::
+
+    wave = spectrum.make_wave()
+    wave.play('temp.wav')
+
+``play`` 方法会将波形数据写入文件并且进行播放。如果使用 ``Jupyter notebooks`` ，你可以用 ``make_audio`` 
+来生成一个音频部件。
+
+1.6 波形对象
+-------------
+
+其实 ``thinkdsp.py`` 中并没有什么复杂的东西，它提供的大多数方法仅仅是对 ``Numpy`` 和 ``Scipy`` 的包装。
+其中主要有三个类： ``Signal`` ， ``Wave`` 和 ``Spectrum`` 。
+给定一个 ``Signal`` 可以生成一个 ``Wave`` ，
+给定一个 ``Wave`` 可以生成一个 ``Spectrum`` ，反之亦然。 `图1.5`_ 展示了这些关系。
+
+.. _图1.5:
+
+.. figure:: images/thinkdsp005.png
+    :alt: Relationships among the classes in thinkdsp
+
+    图1.5： ``thinkdsp`` 中各个类之间的关系图
+
+``Wave`` 包含三个属性： ``ys`` 是包含信号值的Numpy数组； ``ts`` 是对应的时间数组； ``framerate`` 是采样率。
+其中单位时间通常是秒，但是有些例子中也会使用其他的单位时间，例如天。
+
+``Wave`` 还包含三个只读属性：``start`` ， ``end`` 和 ``duration`` ，这些属性由 ``ts`` 所决定，
+改变 ``ts``后这些属性会相应的改变。
+
+我们可以通过直接改变 ``ts`` 以及 ``ys`` 来改变波形，例如::
+
+    wave.ys *= 2
+    wave.ts += 1
+
+第一行代码将信号放大了两倍，使其音量变的更大。第二行代码将波形右移了一个单位时间，使其声音晚一秒钟才开始。
+
+``Wave`` 也提供了很多方法来进行更常规的操作，例如以下两个变换与之前的代码效果一样::
+
+    wave.scale(2)
+    wave.shift(1)
+
+这些方法的文档在 http://greenteapress.com/thinkdsp.html 中。
+
+1.7 信号对象
+-------------
+
+``Signal`` 是所有信号的父类，其中提供了信号的基础方法，如 ``make_wave`` 。子类信号通过继承 ``Signal`` 并重写
+``evaluate`` 方法来实现。 ``evaluate`` 方法用于计算信号在任意时刻的值。
+
+例如， ``Sinusoid`` 子类的定义如下::
+
+    class Sinusoid(Signal):
+    
+    def __init__(self, freq=440, amp=1.0, offset=0, func=np.sin):
+        Signal.__init__(self)
+        self.freq = freq
+        self.amp = amp
+        self.offset = offset
+        self.func = func
+
+其中构造参数包括：
+
+* freq：信号的频率（Hz）
+
+* amp：信号的幅度，通常单位为1
+
+* offset：信号的相位，单位为弧度
+
+* func：用于计算给定时间点的信号值的函数。可以为 ``np.sin`` 或 ``np.cos`` ，对应为正弦信号和余弦信号。
+
+.. note::
+    11111111111111111111
 
 
 
