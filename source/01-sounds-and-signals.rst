@@ -244,8 +244,9 @@ y轴显示了它们的强度（也叫做幅度）。
 ``Wave`` 包含三个属性： ``ys`` 是包含信号值的Numpy数组； ``ts`` 是对应的时间数组； ``framerate`` 是采样率。
 其中单位时间通常是秒，但是有些例子中也会使用其他的单位时间，例如天。
 
-``Wave`` 还包含三个只读属性：``start`` ， ``end`` 和 ``duration`` ，这些属性由 ``ts`` 所决定，
-改变 ``ts``后这些属性会相应的改变。
+
+``Wave`` 还包含三个只读属性： ``start`` ， ``end`` 和 ``duration`` ，
+这些属性由 ``ts`` 所决定，改变ts后这些属性会相应的改变。
 
 我们可以通过直接改变 ``ts`` 以及 ``ys`` 来改变波形，例如::
 
@@ -284,14 +285,46 @@ y轴显示了它们的强度（也叫做幅度）。
 
 * amp：信号的幅度，通常单位为1
 
-* offset：信号的相位，单位为弧度
+* offset：信号的初始相位，单位为弧度
 
 * func：用于计算给定时间点的信号值的函数。可以为 ``np.sin`` 或 ``np.cos`` ，对应为正弦信号和余弦信号。
 
-.. note::
-    11111111111111111111
+``Singal`` 类中的 ``make_wave`` 方法的代码如下::
+
+    def make_wave(self, duration=1, start=0, framerate=11025):
+        n = round(duration * framerate)
+        ts = start + np.arange(n) / framerate
+        ys = self.evaluate(ts)
+        return Wave(ys, ts, framerate=framerate)
+
+其中， ``start`` ``duration`` 为开始时间和持续时间（单位为秒），``framerate`` 是采样率（单位为Hz）。
+
+``n`` 是采样点的总数， ``ts`` 用Numpy数组表示的采样时间
+
+``make_wave`` 会调用 ``evaluate``  方法来计算信号在每个采样点的值 ``ys`` ， 
+例如： ``Sinusoid`` 中的 ``evaluate`` 是这样的::
+
+    def evaluate(self, ts):
+        phases = PI2 * self.freq * ts + self.offset
+        ys = self.amp * self.func(phases)
+        return ys
+
+让我们详细解释一下这个函数：
+
+1. ``self.freq`` 是频率， ``ts`` 是采样时间序列，因此他们的乘积为采样的 ``cycles``
+
+2. ``PI2`` 是常数 :math:`2\pi`
 
 
+.. admonition:: 译者注
+
+   公 :literal:`text` 式为： :math:`2\pi` 。
+
+.. math::
+
+   (a + b)^2 = a^2 + 2ab + b^2
+
+   (a - b)^2 = a^2 - 2ab + b^2
 
 
 .. DANGER::

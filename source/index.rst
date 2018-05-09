@@ -19,7 +19,7 @@
    06-discrete-cosine-transform
    07-discrete-fourier-transform
    08-filtering-and-convolution
-   09-differentiation-and-interation
-   10-lti-systems
+   09-differentiation-and-integration
+   10-lti-system
    11-modulation-and-sampling
 
