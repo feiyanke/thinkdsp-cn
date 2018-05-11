@@ -82,6 +82,111 @@
 2.2 方波
 -----------
 
+``thinkdsp`` 还提供了 ``SquareSignal`` 类来表示方波信号，这个类的定义如下::
+
+    def evaluate(self, ts):
+        cycles = self.freq * ts + self.offset / PI2
+        frac, _ = np.modf(cycles)
+        ys = self.amp * np.sign(unbias(frac))
+        return ys
+
+类似 ``TriangleSignal`` 和 ``SquareSignal`` 这样继承自 ``Sinusoid`` 类及其构造函数 ``__init__`` 的类，
+他们的共同点是都具有相同的构造参数：频率，幅度，初始相位。
+
+``SquareSignal`` 的 ``evaluate`` 方法也具有类似的结构。其中 ``ts`` 依然是采样点的时间，
+``frac`` 是它的小数部分，它的值从0到1周期的变化。
+
+``unbias`` 将 ``frac`` 调整到-0.5~0.5，然后 ``np.sign`` 将结果的负值映射到-1，正值映射到1。
+最后， ``amp`` 将信号的幅值调整到 -amp~amp 。
+
+`图2.3`_ 显示了100Hz方波信号的三个周期， `图2.4`_ 显示了它的频谱。
+
+.. _图2.3:
+
+.. figure:: images/thinkdsp008.png
+    :alt: Segment of a square signal at 100 Hz
+
+    图2.3：100Hz方波信号波形图
+
+.. _图2.4:
+
+.. figure:: images/thinkdsp009.png
+    :alt: Spectrum of a square signal at 100 Hz
+
+    图2.4：100Hz方波信号的频谱图
+
+和三角波一样，方波同样只包含奇数倍的谐波频率，它们的峰值在300Hz，500Hz，700Hz等。
+但是它们幅度的减弱要比三角波慢一些（不是平方的关系）。
+
+在本章后面的练习题中，你有机会发现一些其他的波形和它们的谐波结构。
+
+2.3 混叠
+-------------
+
+坦白说，之前介绍的几个波形，都是我刻意挑选的，避免了比较的复杂的波形和频谱给大家带来困惑。
+但是，接下来我会介绍一些比较复杂的情况。
+
+`图2.5`_ 显示了一个1100Hz的三角信号在1KHz采样率下的频谱。右图是左图的放大后的图像，这样可以看的更清楚。
+
+.. _图2.5:
+
+.. figure:: images/thinkdsp010.png
+    :alt: Spectrum of a triangle signal at 1100 Hz sampled at 10,000 frames per second. 
+        The view on the right is scaled to show the harmonics.
+
+    图2.5：显示了一个1100Hz的三角信号在1KHz采样率下的频谱。右图是左图的放大后的图像
+
+这个信号的谐波应该在3300Hz，5500Hz，7700Hz和9900Hz。图中可以看到我们期望的1100Hz和3300Hz的频率，
+但是第三个峰值的频率是在4500Hz而不是5500Hz，第四个峰值的频率是在2300Hz而不是7700Hz，下一个峰值的频率
+是100Hz而不是9900Hz，这是怎么回事呢？
+
+造成这个情况的原因是，在计算整个信号的波形的过程中，实际上是在采样点在对信号进行了离散化的处理，因此
+在连续信号的各个采样点之间会丢失掉一些信息。对于低频的信号丢失的信息不多，因为同样的采样率下，频率低
+的信号在一个周期内可以有更多的采样点。
+
+但是如果你用10000Hz的采样率来采集5000Hz的信号，一个信号周期内就仅有两个采样点了。实际上两个采样点是足够的，
+但是如果信号的频率再高一点，一个周期内采样点小于两个，那么就会产生问题了。
+
+为了解释这个现象，让我们来看两个余弦信号（4500Hz和5500Hz），我们使用10000Hz的采样率来计算他们的波形::
+
+    framerate = 10000
+
+    signal = thinkdsp.CosSignal(4500)
+    duration = signal.period*5
+    segment = signal.make_wave(duration, framerate=framerate)
+    segment.plot()
+
+    signal = thinkdsp.CosSignal(5500)
+    segment = signal.make_wave(duration, framerate=framerate)
+    segment.plot()
+
+`图2.6`_ 中灰色的线是信号本身，而蓝色的竖线是采样后的信号。对比这两个图，可以发现，
+两个不同的信号却产生了相同的采样值。
+
+.. _图2.6:
+
+.. figure:: images/thinkdsp011.png
+    :alt: Cosine signals at 4500 and 5500 Hz, sampled at 10,000 frames per second. 
+        The signals are different, but the samples are identical.
+
+    图2.6：10000Hz采样率下的4500Hz和5500Hz的余弦信号波形图
+
+事实上，当我们用10000Hz采样率对5500Hz信号进行采样的时候，其结果与4500Hz的信号是相同的。
+正是因为这样，7700Hz的信号和2300Hz的信号，9900Hz的信号和100Hz的信号在采样后也是相同的。
+
+信号采样后产生的这种现象，我们就称为 **混叠（aliasing）** ，简单来说，就是高频的信号在采样后
+会像是低频的信号。
+
+在这个例子中（10000Hz采样率），我们最高可以采集的频率为5000Hz，也就是采样率的一半，高于5000Hz的
+频率成分会被折叠刀5000Hz以内，因此我们把这个频率叫做折叠频率（floding frequence），
+又称为 **奈奎斯特频率（Nyquist frequency）** 。参见 http://en.wikipedia.org/wiki/Nyquist_frequency 。
+
+我们可以这样来计算折叠后的频率：如果信号的频率大于采样率，通过对信号频率与采样率相除求余，来得到在0到采样率之间
+的频率，然后如果这个频率大于折叠频率，则用采样率减去这个频率，最后就得到了折叠后的结果。 例如，之前波形的第五个
+谐波频率是12100Hz，求余后为2100Hz，就是折叠后的频率了。你也可以从 `图2.4`_ 上看到这个2100Hz的频率。同样，也可以
+看到4300Hz的频率（14300Hz，折叠后为4300Hz）。
+
+
 
 
 
