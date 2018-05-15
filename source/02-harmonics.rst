@@ -186,6 +186,51 @@
 谐波频率是12100Hz，求余后为2100Hz，就是折叠后的频率了。你也可以从 `图2.4`_ 上看到这个2100Hz的频率。同样，也可以
 看到4300Hz的频率（14300Hz，折叠后为4300Hz）。
 
+2.4 频谱的计算
+----------------
+
+在之前的章节中，我们多次使用了 ``make_spectrum`` ，它的代码（省略了一些细节）是这样的::
+
+    from np.fft import rfft, rfftfreq
+
+    # class Wave:
+        def make_spectrum(self):
+            n = len(self.ys)
+            d = 1 / self.framerate
+
+            hs = rfft(self.ys)
+            fs = rfftfreq(n, d)
+
+            return Spectrum(hs, fs, self.framerate)
+
+``self`` 参数代表的是波形对象本身， ``n`` 是波形的采样点数目， ``d`` 是采样率的倒数，也就是采样时间步长。
+
+``np.fft`` 是Numpy提供的FFT方法（一种高效的计算DFT的算法）。
+
+``make_spectrum`` 使用了 ``rfft`` ，它的意思是“实数FFT”，如果信号是实数而不是复数，我们就可以使用它。
+之后，我们会看到“完整FFT”，它可以处理复信号（见7.9）。 ``rfft`` 的结果 ``hs`` 是一个复数的Numpy数组，
+它表示了各个频率分量的幅值和初始相位。
+
+``rfftfreq`` 的结果 ``fs`` 包含了与 ``hs`` 对应的频率值。
+
+对于 ``hs`` 中的复数，我们可以这样理解：
+
+* 复数是实部和虚部的和，通常写成： :math:`x + iy` ，其中 :math:`i` 是单位虚数，也就是 :math:`\sqrt { - 1}` 。
+  我们可以把复数的x和y看做是复数在复平面下的坐标（以实轴为横坐标，虚轴为纵坐标的直角坐标系）
+
+* 复数也可以表示为幅值和复指数的形式，写成： :math:`A{e^{i\varphi }}` ，其中 :math:`A` 为模， 
+  :math:`\varphi` 为幅角。我们可以把它看做是复数在极坐标下的表示。
+
+.. admonition:: 译者注
+
+    :math:`x + iy` 的极坐标表示为： :math:`A\cos (\varphi ) + A\sin (\varphi )i` ，
+    根据欧拉公式 :math:`{e^{ix}} = \cos (x) + isin(x)` ，可以得出 :math:`A{e^{i\varphi }}` 
+
+``hs`` 中的每个复数值就代表了该频率分量的复数表示：它的模值就是该频率的幅值，它的幅角就是该频率的初始相位。
+
+``Spectrum`` 类中提供了两个只读的属性： ``amps`` 和 ``angles`` ，用来得到这些幅值和初始相位（它们都被
+放在Numpy数组中）。我们在画频谱图的时候，实际上不是直接使用 ``fs`` ，而是使用 ``amps`` 和 ``angles`` 。
+
 
 
 
