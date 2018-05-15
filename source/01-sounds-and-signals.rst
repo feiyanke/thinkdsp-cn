@@ -53,6 +53,7 @@ http://en.wikipedia.org/wiki/Scientific_pitch_notation 。
 
 .. figure:: images/thinkdsp002.png
     :alt: Segment from a recording of a violin
+    :align: center
 
     图1.2：一段小提琴的声音信号
 
@@ -76,6 +77,7 @@ y轴显示了它们的强度（也叫做幅度）。
 
 .. figure:: images/thinkdsp003.png
     :alt: Spectrum of a segment from the violin recording
+    :align: center
 
     图1.3：小提琴声音的频谱
 
@@ -174,6 +176,7 @@ y轴显示了它们的强度（也叫做幅度）。
 
 .. figure:: images/thinkdsp004.png
     :alt: Segment from a mixture of two sinusoid signals
+    :align: center
 
     图1.4：不同频率的两个正弦信号的合成信号波形
 
@@ -244,6 +247,7 @@ y轴显示了它们的强度（也叫做幅度）。
 
 .. figure:: images/thinkdsp005.png
     :alt: Relationships among the classes in thinkdsp
+    :align: center
 
     图1.5： ``thinkdsp`` 中各个类之间的关系图
 
