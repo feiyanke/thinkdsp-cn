@@ -30,6 +30,7 @@
 
 .. figure:: images/thinkdsp001.png
     :alt: Segment from a recording of a bell
+    :align: center
 
     图1.1：一段钟声的信号
 

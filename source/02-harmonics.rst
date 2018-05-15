@@ -23,6 +23,7 @@
 
 .. figure:: images/thinkdsp006.png
     :alt: Segment of a triangle signal at 200 Hz
+    :align: center
 
     图2.1： 200Hz的三角波波形图
 
@@ -69,6 +70,7 @@
 .. figure:: images/thinkdsp007.png
     :alt: Spectrum of a triangle signal at 200 Hz, shown on two vertical scales. 
         The version on the right cuts off the fundamental to show the harmonics more clearly.
+    :align: center
 
     图2.2： 200Hz三角波在不同Y轴坐标尺度下的频谱图。
     右图中，为了更清除的展示谐波结构，基频的峰值没有全部显示出来
@@ -92,7 +94,8 @@
         ys = self.amp * np.sign(unbias(frac))
         return ys
 
-类似 ``TriangleSignal`` 和 ``SquareSignal`` 这样继承自 ``Sinusoid`` 类及其构造函数 ``__init__`` 的类，
+类似 ``TriangleSignal`` 和 ``SquareSignal`` 这样继承自 ``Sinusoid`` 类
+及其构造函数 ``__init__`` 的类，
 他们的共同点是都具有相同的构造参数：频率，幅度，初始相位。
 
 ``SquareSignal`` 的 ``evaluate`` 方法也具有类似的结构。其中 ``ts`` 依然是采样点的时间，
@@ -107,6 +110,7 @@
 
 .. figure:: images/thinkdsp008.png
     :alt: Segment of a square signal at 100 Hz
+    :align: center
 
     图2.3：100Hz方波信号波形图
 
@@ -114,6 +118,7 @@
 
 .. figure:: images/thinkdsp009.png
     :alt: Spectrum of a square signal at 100 Hz
+    :align: center
 
     图2.4：100Hz方波信号的频谱图
 
@@ -135,6 +140,7 @@
 .. figure:: images/thinkdsp010.png
     :alt: Spectrum of a triangle signal at 1100 Hz sampled at 10,000 frames per second. 
         The view on the right is scaled to show the harmonics.
+    :align: center
 
     图2.5：显示了一个1100Hz的三角信号在1KHz采样率下的频谱。右图是左图的放大后的图像
 
@@ -170,6 +176,7 @@
 .. figure:: images/thinkdsp011.png
     :alt: Cosine signals at 4500 and 5500 Hz, sampled at 10,000 frames per second. 
         The signals are different, but the samples are identical.
+    :align: center
 
     图2.6：10000Hz采样率下的4500Hz和5500Hz的余弦信号波形图
 
@@ -217,7 +224,8 @@
 
 对于 ``hs`` 中的复数，我们可以这样理解：
 
-* 复数是实部和虚部的和，通常写成： :math:`x + iy` ，其中 :math:`i` 是单位虚数，也就是 :math:`\sqrt { - 1}` 。
+* 复数是实部和虚部的和，通常写成： :math:`x + iy` ，其中 :math:`i` 是单位虚数，
+  也就是 :math:`\sqrt { - 1}` 。
   我们可以把复数的x和y看做是复数在复平面下的坐标（以实轴为横坐标，虚轴为纵坐标的直角坐标系）
 
 * 复数也可以表示为幅值和复指数的形式，写成： :math:`A{e^{i\varphi }}` ，其中 :math:`A` 为模， 
@@ -230,8 +238,9 @@
 
 ``hs`` 中的每个复数值就代表了该频率分量的复数表示：它的模值就是该频率的幅值，它的幅角就是该频率的初始相位。
 
-``Spectrum`` 类中提供了两个只读的属性： ``amps`` 和 ``angles`` ，用来得到这些幅值和初始相位（它们都被
-放在Numpy数组中）。我们在画频谱图的时候，一般会画出相对于 ``fs`` 下的 ``amps`` ，或者相对于 ``fs`` 的 ``angles`` 。
+``Spectrum`` 类中提供了两个只读的属性： ``amps`` 和 ``angles`` ，
+用来得到这些幅值和初始相位（它们都被放在Numpy数组中）。
+我们在画频谱图的时候，一般会画出相对于 ``fs`` 下的 ``amps`` ，或者相对于 ``fs`` 的 ``angles`` 。
 在实际使用中，我们几乎不会直接去关注 ``hs`` 的实部和虚部。
 
 我们也可以直接通过改变 ``hs`` 的值来改变频谱，例如::
