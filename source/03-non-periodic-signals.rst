@@ -400,7 +400,7 @@ Numpy提供的窗函数包括： ``bartlett`` ， ``blackman`` ， ``hanning`` �
  参考 http://docs.scipy.org/doc/numpy/reference/routines.window.html 。
 
  **练习2** 编写一个锯齿啁啾声类 ``SawtoothChirp`` 继承自 ``Chirp`` ，
- 并复写 ``evaluate`` 方法生成一个频率按锯齿波形变化的信号。
+ 并复写 ``evaluate`` 方法生成一个频率线性增大或减小的锯齿波信号。
  提示：可以结合 ``SawtoothSignal`` 和 ``Chirp`` 两个类的 ``evaluate`` 方法。
 
 凭你自己的想象，在纸上大致画出这个信号的声谱图，然后再用代码画出来。
