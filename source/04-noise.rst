@@ -213,6 +213,179 @@ UU噪声是不相关的，每个时刻的值互相都是独立的。而布朗噪
 
 与白噪声类似，由于呈现这种频率-功率关系的灯光是红色的，我们也把布朗噪声称为 **红噪声（red noise）**。
 
+4.4 粉红噪声
+--------------
+
+对于红噪声来说，频率和功率的关系是：
+
+.. math::
+
+    P = K/{f^2}
+
+这里，频率平方的关系其实可以更一般化的表示为指数 :math:`\beta` ：
+
+.. math::
+
+    P = K/{f^\beta }
+
+当 :math:`\beta = 0` 的时候，所有频率分量的功率都是一个常数，也就是白噪声。
+当 :math:`\beta = 2` 的时候，是红噪声。
+
+当 :math:`\beta` 在0~2以内的时候，叫做 **粉红噪声（pink noise）** 。
+
+生成粉红噪声的一种简单的方式是在UU噪声的基础上应用一个低通滤波器。
+``thinkdsp`` 中提供一个粉红噪声的类 ``PinkNoise`` ::
+
+    class PinkNoise(_Noise):
+
+        def __init__(self, amp=1.0, beta=1.0):
+            self.amp = amp
+            self.beta = beta
+
+        def make_wave(self, duration=1, start=0, framerate=11025):
+            signal = UncorrelatedUniformNoise()
+            wave = signal.make_wave(duration, start, framerate)
+            spectrum = wave.make_spectrum()
+
+            spectrum.pink_filter(beta=self.beta)
+
+            wave2 = spectrum.make_wave()
+            wave2.unbias()
+            wave2.normalize(self.amp)
+            return wave2
+
+其中， ``amp`` 是噪声的幅值， ``beta`` 为之前所说的频率的指数。
+``make_wave`` 用于生成波形。其中 ``duration`` 是需要生成的长度。
+``start`` 是波形的开始时间， ``framerate`` 是采样率。
+由于要与所有信号类的 ``make_wave`` 方法保持一致，因此这些参数都必须写出来，
+虽然对于随机的噪声来说，开始时间和采样率都是没用的。
+
+``make_wave`` 方法首先生成了一个白噪声以及它的频谱，然后应用了一个滤波器 ``pink_filter`` 。
+最后进行 ``unbias`` 和 ``normalize`` 操作。
+
+``Spectrum`` 中提供的 ``pink_filter`` 方法如下::
+
+     def pink_filter(self, beta=1.0):
+        denom = self.fs ** (beta/2.0)
+        denom[0] = 1
+        self.hs /= denom
+
+它将所有频率成分的幅值除以 :math:`{f^{\beta /2}}` 。由于功率是幅度的平方，这个操作使得
+功率变化为原来的 :math:`1/{f^\beta }` 。当然，为了避免与0相除，我们将第0个元素设置为了1，
+这意味着信号的直流分量的幅值不会改变。
+
+.. _图4.6:
+
+.. figure:: images/thinkdsp023.png
+    :alt: Waveform of pink noise with β=1
+    :align: center
+
+    图4.6： β=1 的粉红噪声的波形图
+
+
+.. _图4.7:
+
+.. figure:: images/thinkdsp024.png
+    :alt: Spectrum of white, pink, and red noise on a log-log scale.
+    :align: center
+
+    图4.7： 白噪声，粉红噪声和红噪声在对数刻度下的频谱图
+
+`图4.6`_ 展示了粉红噪声的波形，与布朗噪声有点类似，它有一些保持当前的运动趋势的特点，
+（也就是相邻两个值之间的相关性），但是又增加了一些随机性。下一章我们会再回过头来准确的
+解释我所说的“相关性”和“随机性”。
+
+最后，`图4.7`_ 展示了白噪声，粉红噪声和红噪声的频谱（在对数刻度下）。图中，我们可以很明显的
+看出频率和功率在对数刻度下的线性关系，也就是斜率 :math:`\beta` 。
+
+4.5 高斯噪声
+----------------
+
+UU噪声中所有频率成分的功率都是一个固定的常数，因此UU噪声是白噪声。
+但是通常我们提到“白噪声”的时候，指的并不是UU噪声，
+而是不相关的高斯噪声（uncorrelated Gaussian Noise），简称UG噪声。
+
+``thinkdsp`` 中提供了一个UG噪声的类::
+
+    class UncorrelatedGaussianNoise(_Noise):
+
+        def evaluate(self, ts):
+            ys = np.random.normal(0, self.amp, len(ts))
+            return ys
+
+``np.random.normal`` 计算出了均值（ :math:`\mu` ）为0，
+方（ :math:`\sigma` ）为 ``self.amp`` 的高斯分布。
+在这个分布下，信号值的范围是正无穷到负无穷之间，
+但是99%的值都分布在 :math:`(\mu  - 3\sigma ,\mu  + 3\sigma )` 区间。
+
+UG噪声在很多方面都与UU噪声相似，它的频谱的所有分量都有常值的平均功率，
+因此属于白噪声。一个有趣的特性是，UG噪声的频谱也是UG噪声，更准确的说是，
+UG噪声的频谱的实部和虚部均服从高斯分布。
+
+为了验证这个说法，我们来生成UG噪声的频谱，然后生成一个可以直观的判断
+数据是否服从高斯分布的“正态概率图”::
+
+    signal = thinkdsp.UncorrelatedGaussianNoise()
+    wave = signal.make_wave(duration=0.5, framerate=11025)
+    spectrum = wave.make_spectrum()
+
+    thinkstats2.NormalProbabilityPlot(spectrum.real)
+    thinkstats2.NormalProbabilityPlot(spectrum.imag)
+
+``NormalProbabilityPlot`` 方法包含在 ``thinkstats2`` 中，你可以在本书的代码库中
+找到这个文件。
+关于正态概率图，可以参考 《ThinkStats》中的第五章， http://thinkstats2.com 。
+
+
+.. _图4.8:
+
+.. figure:: images/thinkdsp025.png
+    :alt: Normal probability plot for the real and imaginary 
+            parts of the spectrum of Gaussian noise
+    :align: center
+
+    图4.8： 高斯噪声频谱的实部（左）和虚部（右）的正态概率图
+
+在正态概率图中，如果数据与直线拟合的很好，则说明数据是服从高斯分布的。
+`图4.8`_ 中灰线代表数据的拟合结果，蓝线是数据。可以看出，除了很少的点外，
+数据和直线是拟合的很好的，说明了UG噪声的频谱也是UG噪声。
+
+实际上，根据中心极限定理，只要信号的分布具有有限的均值和标准差并且采样点足够多，
+则任何不相关的噪声的频谱都是服从高斯分布的。
+
+4.6 练习
+------------------
+
+下面练习的答案可以参考文件 ``chap04soln.ipynb`` 。
+
+**练习1** `A Soft Murmur <http://asoftmurmur.com/about//>`_ 中可以找到
+很多自然界的混合噪声，包括雨声，波浪声，风声等。下载一些声音文件，计算它们的频谱，
+看看他们的功率谱是否像白噪声，粉红噪声或是布朗噪声？这些频谱相对于时间是如果变化的？
+
+**练习2** 像这样的噪声，它的频率成分通常都是随时间变化的。长期来看，所有频率成分的功率
+应该是一样的，但是在一段短时间内，功率又是随机的。为了估计长时间的平均功率，我们可以把信号
+分段，并分别计算每段时间内的功率谱，最后计算这些分段的功率的平均值，
+这个算法叫做 *Bartlett's method* ，参见  http://en.wikipedia.org/wiki/Bartlett's_method 。
+试着实现这个算法，并用它来计算一个噪声信号的功率谱。 提示：可以参考 ``make_spectrogram`` 的实现。
+
+**练习3** 在 http://www.coindesk.com 上下载比特币的每日价格数据（csv文件），使用代码将数据
+加载进来，并计算它的功率谱。看看它是否与白噪声，粉红噪声或是布朗噪声类似。
+
+**练习4** 盖革-米勒计数器（Geiger counter）一种专门探测电离辐射强度的记数仪器。每当离子激发探测器，
+就会输出一个电流脉冲。在单位时间输出脉冲的个数可以用一个不相关的泊松噪声来描述，也就是说在单位时间
+内检测到的离子的个数服从泊松分布。
+编写一个 ``UncorrelatedPoissonNoise`` 类，继承自 ``_Noise`` 并复写 ``evaluate`` 方法。 
+使用 ``np.random.poisson`` 来生成服从泊松分布的随机信号值。 该类提供一个 ``lam`` 属性表示
+单位时间发生次数的均值，你可以使用 ``amp`` 来作为 ``lam`` 使用。例如，当采样率是10kHz的时候，
+如果 ``amp`` 是0.001，意味着没秒钟大约会出现10次。
+
+生成1s的UP噪声并听一听，你会发现对于较小的 ``amp`` ，比如0.001，它会听起来像是盖革-米勒计数器。
+而对于较大的 ``amp`` ，它会听起来像是白噪声。计算并画出它的功率谱，看看是否像白噪声。
+
+**练习5** 本章中介绍的计算粉红噪声的方法相对来说比较简单，但是效率比较低。
+Voss-McCartney 算法是一种更高效的算法。研究并实现这个算法，计算出结果的功率谱，看看是否具有期望的
+频率与功率的关系。 
+
 
 
 

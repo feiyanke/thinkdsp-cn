@@ -1,4 +1,5 @@
 # thinkdsp-cn
 《ThinkDSP》 中文翻译
+http://thinkdsp-cn.readthedocs.io/zh_CN/latest/
 
-可以在 [Read the Docs](http://thinkdsp-cn.readthedocs.io/zh_CN/latest/) 上浏览，目前更新到第二章
+更新到第四章
