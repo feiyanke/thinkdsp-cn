@@ -184,6 +184,140 @@ Python中有很好几种方法来计算相关性。其中 ``np.corrcoef`` 可以
 5.4 周期信号的自相关性
 -----------------------
 
+粉红噪声的自相关性虽然有趣，但是在实际应用中比较有限。
+相比而言，周期信号的自相关性更有用一些。
+
+这里我以一个从  freesound.org 上下载的声音作为例子。
+这个文件可以在 `代码库`_ 中找到，是一个人唱出的啁啾声的录音。
+你可以在 ``chap05.ipynb`` 中播放它。
+
+.. _图5.5:
+
+.. figure:: images/thinkdsp030.png
+    :alt: Spectrogram of a vocal chirp
+    :align: center
+
+    图5.5： 一个人声啁啾信号的声谱图
+
+`图5.5`_ 展示了这段声音的声谱图，图中可以清晰的看出基频和其他的谐波成分。
+这个啁啾声从大概500Hz开始下降到大概300Hz，大致是从C5到E4。
+
+我可以使用频谱来估计某一个时刻的音高，但是实际上，这种方法不是太好。
+我们来看看这是为什么，这里我截取了一小段声音波形并画出了它的频谱::
+
+    duration = 0.01
+    segment = wave.segment(start=0.2, duration=duration)
+    spectrum = segment.make_spectrum()
+    spectrum.plot(high=1000)
+
+这段波形从0.2s开始持续了0.01s的时间。频谱见 `图5.6`_ 。图中可以清晰的看到400Hz的峰值。
+但是我们不能就此断定音高就是400Hz。由于波形的长度是0.1s，
+因此频率分辨率是100Hz（参见 :ref:`3.5 <3.5 Gabor limit>` ）。
+这就意味着估计的音高总是会有50Hz的偏差，这对于音乐来说就差的太远了，因为从350Hz到450Hz
+已经跨越了5个半音，是一个很大的音程了。
+
+.. _图5.6:
+
+.. figure:: images/thinkdsp031.png
+    :alt: Spectrum of a segment from a vocal chirp
+    :align: center
+
+    图5.6： 一个人声啁啾信号的其中一段的频谱图
+
+当然，我们可以使用一个较长的分段来提高频率的分辨率，但是这样一来，音高随时间的变化就会变得模糊；
+也就是说峰值会分布在这段波形的开始和结束的音高上，见 :ref:`3.3 <3.3 啁啾声的频谱>` 。
+
+运用自相关性，我们可以更精确的估算音高。如果信号是周期的，那么当 ``lag`` 等于周期的时候，信号的
+自相关函数应该是最大的。
+
+下面的代码，我画出了录音的不同的两段::
+
+    def plot_shifted(wave, offset=0.001, start=0.2):
+        thinkplot.preplot(2)
+        segment1 = wave.segment(start=start, duration=0.01)
+        segment1.plot(linewidth=2, alpha=0.8)
+
+        segment2 = wave.segment(start=start-offset, duration=0.01)
+        segment2.shift(offset)
+        segment2.plot(linewidth=2, alpha=0.4)
+
+        corr = segment1.corr(segment2)
+        text = r'$\rho =$ %.2g' % corr
+        thinkplot.text(segment1.start+0.0005, -0.8, text)
+        thinkplot.config(xlabel='Time (s)')
+
+其中一段声音从0.2s开始，另一段从这之后0.0023s开始。
+如 `图5.7`_ 所示，这两段信号很相似，他们的相关系数是0.99。
+这个结果表明信号的周期大约是0.0023s，对应的频率是435Hz。
+
+.. _图5.7:
+
+.. figure:: images/thinkdsp032.png
+    :alt: Two segments from a chirp, one starting 0.0023 seconds after the other
+    :align: center
+
+    图5.7： 相差0.0023s的信号波形图
+
+上面，我是通过试错的方法找出了周期。我们也可以用自相关函数来自动的计算::
+
+    lags, corrs = autocorr(segment)
+    thinkplot.plot(lags, corrs)
+
+.. _图5.8:
+
+.. figure:: images/thinkdsp033.png
+    :alt: Autocorrelation function for a segment from a chirp
+    :align: center
+
+    图5.8： 一段啁啾声的自相关函数
+
+如 `图5.8`_ ，这段信号的自相关函数从0.2s开始，在 `lag=101` 处达到峰值。
+对应的频率可以像下面这样计算::
+
+    period = lag / segment.framerate
+    frequency = 1 / period
+
+这样估算出来的基频是437Hz。我们可以用同样的方法计算出 ``lag`` 为100和102时的
+频率值为432Hz和441Hz，也就是说这里估算的频率的精度小于10Hz，这与使用频谱估计的
+100Hz的精度相比，好太多了。
+在音乐中，我们可以分辨30分的音高，大约是一个半音的1/3。
+
+5.5 点积
+------------
+
+在本章开始引入了皮尔森相关系数：
+
+.. math::
+
+    \rho  = \frac{{\sum\limits_i {({x_i} - {\mu _x})({y_i} - {\mu _y})} }}{{N{\sigma _x}{\sigma _y}}}
+
+然后我们使用 :math:`\rho` 来定义了序列相关性和自相关性。
+这些定义实际上都是在统计学上使用的，在信号处理中，这些定义还稍微有些不同。
+
+信号处理中，我们通常处理的是无偏（均值为0）归一化（标准差为1）的信号，在这种情况下， :math:`\rho` 的定义简化为：
+
+.. math::
+
+    \rho  = \frac{1}{N}\sum\limits_i {{x_i}{y_i}} 
+
+进一步简化为：
+
+.. math::
+
+    r = \sum\limits_i {{x_i}{y_i}}
+
+这个定义不是标准的，它的值的范围不是[-1,1]，但是它有一些别的有用的特性。
+
+如果把 *x* 和 *y* 看做是向量，那么这个公式就是 **点积（dot product）** 的公式。
+参见 http://en.wikipedia.org/wiki/Dot_product 。
+
+也就是说点积表征了信号之间的相似度，如果他们都是归一化的，那么：
+
+.. math::
+
+    x \cdot y = \cos \theta
+
+这里， :math:`\theta` 就是两个向量之间的夹角，这也就解释了 `图5.2`_ 是一个余弦曲线的原因。
 
 
 
