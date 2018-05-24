@@ -312,5 +312,110 @@ DCT与频谱分解时用到的DFT很类似。学习了DCT之后可以更容易�
 得到 ``amps2`` 。最后，将 ``amps`` 与 ``amps2`` 比较，他们的最大差值仅为1e-16
 （由浮点数精度导致），说明计算正确。
 
+6.6 逆DCT
+
+最后，我们注意到 ``analyze2`` 和 ``synthesize2`` 的代码几乎是一样的，唯一的区别在于
+``analyze2`` 的结果除了2。因此，我们可以这样来计算DCT的逆运算::
+
+    def inverse_dct_iv(amps):
+        return dct_iv(amps) * 2
+
+``inverse_dct_iv`` 其实就是信号的合成：它把输入幅值向量并输出合成信号 ``ys`` 。
+我们可以像下面这样测试 ``inverse_dct_iv`` ::
+
+    amps = [0.6, 0.25, 0.1, 0.05]
+    ys = inverse_dct_iv(amps)
+    amps2 = dct_iv(ys)
+    max(abs(amps - amps2))
+
+同样，结果最大的差值是1e-16。
+
+6.7 DCT类
+
+``thinkdsp`` 中提供了一个Dct类对DCT进行封装（类似于 ``Spectrum`` 类对FFT进行的封装）。
+我们可以通过波形的 ``make_dct`` 来生成Dct对象::
+
+    signal = thinkdsp.TriangleSignal(freq=400)
+    wave = signal.make_wave(duration=1.0, framerate=10000)
+    dct = wave.make_dct()
+    dct.plot()
+
+这个一个400Hz的三角波的DCT结果，见 `图6.2`_ 。DCT的结果可以是正值也可以是负值，
+负值代表的是负的余弦，也就相当于移动了180°的相位。
+
+.. _图6.2:
+
+.. figure:: images/thinkdsp036.png
+    :alt: DCT of a triangle signal at 400 Hz, sampled at 10 kHz
+    :align: center
+
+    图6.2： 400Hz的三角信号在10kHz采样率下的DCT变换
+
+``make_dct`` 内部用的是DCT-II方法来计算DCT，在 ``scipy.fftpack`` 中提供这个方法::
+
+    import scipy.fftpack
+
+    # class Wave:
+        def make_dct(self):
+            N = len(self.ys)
+            hs = scipy.fftpack.dct(self.ys, type=2)
+            fs = (0.5 + np.arange(N)) / 2
+            return Dct(hs, fs, self.framerate)
+
+``dct`` 的结果保存在 ``hs`` 中，对应的频率值为 ``fs`` （见 `6.5 DCT-IV`_ ）。
+然后使用它们和采样率来生成一个 ``Dct`` 对象。
+
+``Dct`` 类也提供了 ``make_wave`` 方法来计算逆DCT，我们来测试一下::
+
+    wave2 = dct.make_wave()
+    max(abs(wave.ys-wave2.ys))
+
+``wave`` 和 ``wave2`` 的 ``ys`` 差别也大概为1e-16（同样是浮点数误差）。
+
+``make_wave`` 使用了 ``scipy.fftpack.idct`` ::
+
+    # class Dct
+    def make_wave(self):
+        n = len(self.hs)
+        ys = scipy.fftpack.idct(self.hs, type=2) / 2 / n
+        return Wave(ys, framerate=self.framerate) 
+
+逆DCT默认不会结果进行归一化，因此我们需要除以 *2N* 。
+
+6.8 练习
+--------------
+
+下面练习的答案可以参考文件 ``chap06soln.ipynb`` 。
+
+**练习1** 之前我说 ``analyze1`` 的时间复杂度是 :math:`O({n^3})` ，
+而 ``analyze2`` 的时间复杂度为 :math:`O({n^2})` 。使用不同长度的信号作为输入，
+运行这两个函数并计时，看看我这个说法对不对。提示：可以使用魔法命令 ``%timeit`` 
+来计时。
+
+如果你将运行时间和输入数据的长度画在一个对数坐标下，应该可以得到一条直线，对于
+``analyze1`` 来说直线的斜率为3，而 ``analyze2`` 斜率为2。
+
+用同样的方法测试 ``dct_iv`` 和 ``scipy.fftpack.dct`` 。
+
+**练习2** DCT主要应用在音频和图像的压缩中。简单来说，基于DCT的压缩原理是：
+
+1. 把长段的数据分段。
+
+2. 计算每段的DCT。
+
+3. 把幅值很小的频率成分去掉，保存剩下的频率和幅值。
+
+4. 解压的时候，将频率和幅值进行逆DCT运算。
+
+把这个算法实现一下，并应用到一段音乐或语音上，看看多少频率成分被去除后，解压后的
+声音能够感觉到与原始声音有区别。
+
+为了让这个方法更实用，我们需要存储稀疏矩阵（大部分的元素为0）。
+Numpy提供了几种方法，参见 http://docs.scipy.org/doc/scipy/reference/sparse.html 。
+
+**练习3** 本书的 `代码库`_ 中有一个 ``phase.ipynb`` 的文件，讨论了相位对于声音的感受的影响。
+阅读并运行里面的代码，并找一个其他的录音进行试验。你能找到相位结构与声音感觉之间的关系吗？
+
+
 
 
