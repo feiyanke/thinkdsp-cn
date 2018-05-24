@@ -319,6 +319,65 @@ Python中有很好几种方法来计算相关性。其中 ``np.corrcoef`` 可以
 
 这里， :math:`\theta` 就是两个向量之间的夹角，这也就解释了 `图5.2`_ 是一个余弦曲线的原因。
 
+5.6 使用Numpy
+----------------
 
+Numpy中提供了计算互相关函数的方法 ``correlate`` ，我们可以用它来计算上一小节的所说的自相关函数::
+
+    corrs2 = np.correlate(segment.ys, segment.ys, mode='same')
+
+``mode`` 参数表示用于计算的 ``lag`` 范围，当使用 ``same`` 的时候，范围为 -N/2 到 N/2 （N为信号长度）。
+
+
+.. _图5.9:
+
+.. figure:: images/thinkdsp034.png
+    :alt: Autocorrelation function computed with np.correlate
+    :align: center
+
+    图5.9： 用np.correlate计算的自相关函数
+
+如 `图5.9`_ 所示，自相关函数是对称的，这是因为两个相同信号进行相关运算的时候，
+正的lag值与负的lag值产生的影响是一样的。我们选择后半部分来和 ``autocorr`` 进行对比::
+
+    N = len(corrs2)
+    half = corrs2[N//2:]
+
+对比 `图5.8`_ 与 `图5.9`_ 的图像，你会发现，用 ``np.correlate`` 计算的自相关函数随着lag
+值的增加会更小一些，这是因为 ``np.correlate`` 使用的是相关性的非标准定义，随着lag的增大，
+两个信号之间的重合部分变小了，因此相关系数也变小了。
+
+我们可以通过除以长度来校正这个问题::
+
+    lengths = range(N, N//2, -1)
+    half /= lengths
+
+经过这样调整后， ``autocorr`` 和 ``np.correlate`` 的值就基本上相同的。虽然还是有1%~2%的差别，
+但那其实已经不那么重要了。造成这个差别的原因是，是由于 ``autocorr`` 对于每个lag值先进行了归一化
+操作，而 ``np.correlate`` 没有。
+
+现在你应该对自相关有所了解了，并且知道如何使用它来估计信号的基频，以及计算它的两种方式。
+
+5.7 练习
+-------------
+
+下面练习的答案可以参考文件 ``chap05soln.ipynb`` 。
+
+**练习1** ``chap05.ipynb`` 中有一个交互式计算自相关函数的单元，可以直观的计算不同的lag值的自相关系数。
+使用这个方法来估计本章中的人声啁啾声在不同时间的音高。
+
+**练习2** ``chap05.ipynb`` 中有一段使用自相关来估计周期信号基频的代码。
+将这段代码封装成 ``estimate_fundamental`` 函数，并用这个函数计算一段录音的音高变化曲线。
+把计算结果和声谱图画到一起，看看效果怎么样？
+
+**练习3** 使用上一章练习中的比特币价格数据，计算它的自相关函数。看看它是否会快速的减小？
+分析数据是否有明显的周期性？
+
+**练习4** 本书的 `代码库`_ 中有一个 ``saxophone.ipynb`` 文件，里面讨论了自相关性，音高感知
+以及一个叫 **“基频缺失”** 的现象。阅读并运行这个文件，试着使用不同的声音来重新运行里面的实例。
+观看视频 `What is up with Noises? (The Science and 
+Mathematics of Sound, Frequency, and Pitch) 
+<https://www.youtube.com/watch?v=i_0DXxNeaQ0>`_ ，
+它演示了基频缺失现象并解释了音高感知的原理。
 
 
