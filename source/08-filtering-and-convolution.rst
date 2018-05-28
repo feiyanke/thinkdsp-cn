@@ -92,7 +92,7 @@
 
 .. _图8.2:
 
-.. figure:: images/thinkdsp040.png
+.. figure:: images/thinkdsp041.png
     :alt: A square signal at 440 Hz (gray) and an 11-element moving average
     :align: center
 
@@ -142,6 +142,59 @@
 
 8.3 频域
 ---------------
+
+在时域上，平滑操作会使信号的变化没有那么剧烈，那么在频域上，有什么变化呢？
+让我们先来看看原始信号的频谱::
+
+    spectrum = wave.make_spectrum()
+    spectrum.plot(color=GRAY)
+
+再来看看平滑后的信号频谱::
+
+    convolved = np.convolve(wave.ys, window, mode='same')
+    smooth = thinkdsp.Wave(convolved, framerate=wave.framerate)
+    spectrum2 = smooth.make_spectrum()
+    spectrum2.plot()
+
+``same`` 模式表示计算结果需要和输入的长度一致。虽然，这样会产生一些不太好的值，
+不过不会应该我们之后的分析。
+
+如 `图8.3`_ 所示，基频的幅值几乎没有变化，而接下来几个谐波分量的幅值都有所衰减。
+再往高频的分量就几乎被消除了。因此，平滑操作具有低通滤波的效果，见 :ref:`1.5 频谱`
+以及 :ref:`4.4 粉红噪声` 。
+
+.. _图8.3:
+
+.. figure:: images/thinkdsp042.png
+    :alt: Spectrum of the square wave before and after smoothing
+    :align: center
+
+    图8.3： 方波平滑前（灰色）和平滑后（蓝色）的频谱图
+
+为了知道各个频率成分衰减的程度，我们计算出了两个频谱分量的比例::
+
+    amps = spectrum.amps
+    amps2 = spectrum2.amps
+    ratio = amps2 / amps    
+    ratio[amps<560] = 0
+    thinkplot.plot(ratio)
+
+``ratio`` 就是平滑前和平滑后的幅值比例。 当 ``amps`` 很小的时候，这个比例会很大并且没什么意义，
+因此我们简单的把它设置为了0 。
+
+.. _图8.4:
+
+.. figure:: images/thinkdsp043.png
+    :alt: Ratio of spectrums for the square wave, before and after smoothing
+    :align: center
+
+    图8.4： 方波平滑前（灰色）和平滑后（蓝色）的幅值比例
+
+如 `图8.4`_ ，在低频的时候 ``ratio`` 是比较大的，接近1，然后逐渐减小直到截止频率4000Hz。
+但是，在4000Hz之后， ``ratio`` 又开始在0~0.2之间变动，这是怎么回事呢？
+
+8.4 卷积定理
+--------------
 
 
 
