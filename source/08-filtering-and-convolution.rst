@@ -205,6 +205,164 @@
 式中， *f* 是波形数据， *g* 是窗函数，也就是说根据卷积定理， *f* 与 *g* 的卷积后的信号的DFT，
 与它们分别进行DFT然后再相乘的结果是一样的。
 
+由于波形是随时间变化的函数，因此卷积操作是在 **时域（time domain）** 上进行的。
+而DFT后相乘是在 **频域（frequency domain）** 进行的，因为DFT的结果是频率的函数。
+因此，我们又可以这样来描述卷积定理：
+
+* 时域的卷积相当于频域的乘积
+
+这也解释了 `图8.4`_ 的结果。当我们把波形和窗函数进行卷积，实际在频域上就是波形的频谱和窗函数频谱的
+乘积。为了证明这一点，我们先计算出了窗函数的DFT::
+
+    padded = zero_pad(window, N)
+    dft_window = np.fft.rfft(padded)
+    thinkplot.plot(abs(dft_window))
+
+``padded`` 是补0后的窗函数， ``dft_window`` 是窗函数的DFT。
+
+.. _图8.5:
+
+.. figure:: images/thinkdsp044.png
+    :alt: Ratio of spectrums for the square wave, before and after smoothing, 
+        along with the DFT of the smoothing window
+    :align: center
+
+    图8.5： 方波平滑前和平滑后的幅值比例以及窗函数的DFT结果
+
+结果见 `图8.5`_ ，平滑前后的幅值比例与窗函数的DFT结果 ``dft_window`` 是完全重合的。
+用数学公式表示是：
+
+.. math::
+
+    |DFT(f*g)|/|DFT(f)| = |DFT(g)|
+
+在频域下，窗函数的DFT就称为 **滤波器（filter）** ，也就是说时域上一个窗函数的卷积，就对应了
+频域下的一个滤波器。
+
+8.5 高斯滤波器
+-----------------
+
+上一节使用的移动平均窗是一个低通滤波器，但是滤波的效果并不是很好。因为它的DFT一开始衰减的很快，
+但是后面开始上下震荡，这种情况被称为 **旁瓣（sidelobes）** 。由于移动平均窗实际上是一个方波
+信号，它的频谱上包含高频的谐波成分并且幅值是按照 *1/f* 衰减的，这就比较慢了。
+
+而高斯窗函数就比较好了。Scipy中提供了很多常用的卷积窗函数，其中就包括高斯窗::
+
+    gaussian = scipy.signal.gaussian(M=11, std=2)
+    gaussian /= sum(gaussian)
+
+这里， ``M`` 是窗的长度， ``std`` 是高斯分布函数的标准差参数。 `图8.6`_ 展示了这个窗函数的形状，
+它是高斯分布钟型曲线的离散化，图中还画出了移动平均窗的曲线，实际上就是一条平的直线，由于看起来像是
+矩形，因此又称为矩形窗。
+
+.. _图8.6:
+
+.. figure:: images/thinkdsp045.png
+    :alt: Boxcar and Gaussian windows
+    :align: center
+
+    图8.6： 高斯窗函数
+
+我用高斯窗函数重新进行了一次和上一节相同的计算，结果如 `图8.7`_ ，可见通过高斯窗进行平滑后的
+频谱衰减比例与高斯窗的DFT是一致的。
+
+.. _图8.7:
+
+.. figure:: images/thinkdsp046.png
+    :alt: Ratio of spectrums before and after Gaussian smoothing, and the DFT of the window
+    :align: center
+
+    图8.7： 经过高斯窗平滑前后的频谱比例与窗函数的DFT结果
+
+对于低通滤波的效果来说，高斯平滑要比移动平均要更好一些。图中，随着幅值的衰减，几乎没有旁瓣出现，因此它
+可以更好的去除信号的高频成分。
+
+我们之前提到过，高斯函数的DFT也是高斯函数，它的频谱是以 :math:`{e^{ - {f^2}}}` 衰减的，因此，它比 *1/f*
+的矩形窗要好很多。
+
+8.6 高效的卷积
+--------------------
+
+FFT的一个重要的运用是，它与卷积定理结合起来可以提供一种高效的计算卷积，互相关和自相关函数的方法。
+
+这里，我们重新写一次卷积定理的公式：
+
+.. math::
+
+    DFT(f * g) = DFT(f) \cdot DFT(g)
+
+因此，我们得到一种计算卷积的方法：
+
+.. math::
+
+    f*g = IDFT(DFT(f) \cdot DFT(g))
+
+``IDFT`` 指的是逆DFT变换。我们之前使用的卷积计算方式，时间复杂度是 :math:`O({n^2})` ；
+而使用这种方式，时间复杂度仅为 :math:`O(n\log n)` 。
+
+为了验证这种方式的正确性，我们将分别使用两种方法来计算 `图8.1`_ 中Fackbook股票数据的卷积结果::
+
+    import pandas as pd
+
+    names = ['date', 'open', 'high', 'low', 'close', 'volume']
+    df = pd.read_csv('fb.csv', header=0, names=names)
+    ys = df.close.values[::-1]
+
+上面的代码中使用了Pandas来从csv文件中读取数据，这个文件包含在 `代码库`_ 中。
+Pandas是一个数据处理库，本书中涉及的不多，因此即使你不太熟悉也没关系。
+如果有兴趣和话，可以阅读 Think Stats at http://thinkstats2.com 。
+
+从csv读入的数据保存在 ``df`` 中，它是一个 ``DataFrame`` 对象（Pandas中的一个数据类），
+``close`` 是包含收盘数据的Numpy数组。
+
+接下来，我将高斯窗应用到了这个数据上::
+
+    window = scipy.signal.gaussian(M=30, std=6)
+    window /= window.sum()
+    smoothed = np.convolve(ys, window, mode='valid')
+
+下面的 ``fft_convolve`` 使用FFT来进行卷积::
+
+    from np.fft import fft, ifft
+
+    def fft_convolve(signal, window):
+        fft_signal = fft(signal)
+        fft_window = fft(window)
+        return ifft(fft_signal * fft_window)
+
+我们将同样的高斯窗补0后，使用 ``fft_convolve`` 来进行同样的计算::
+
+    padded = zero_pad(window, N)
+    smoothed2 = fft_convolve(ys, padded)
+
+``smooth2`` 的开头包含 *M-1* 个无效的数据， *M* 是窗长度，我们可以像下面这样来去掉这些数据::
+
+    M = len(window)
+    smoothed2 = smoothed2[M-1:]
+
+经过比较， ``fft_convolve`` 和 ``np.convolve`` 的结果是相同的。
+
+8.7 高效的自相关
+------------------
+
+在 `8.2 卷积`_ 中我提到了互相关的定义，它和卷积之间仅有一个符号的差别。
+
+上一节我们介绍了计算卷积的高效方法，同样，我们也可以高效的计算互相关和自相关。
+我们继续使用Facebook的股票数据来计算它的自相关::
+
+    corrs = np.correlate(close, close, mode='same')
+
+使用 ``same`` 模式使得结果与输入数据 ``close`` 的长度一致，相应的 ``lag`` 值是从 *-N/2* 到 *N/2-1* 。
+计算结果见 `图8.8`_ 中的灰色曲线。除了 ``lag`` 为0的时候以外，没有其他的峰值，表明这个信号没有明显的
+周期性。然而，自相关函数下降的比较慢，说明这个信号类似于 :ref:`5.3 <5.3 自相关性>` 中的粉红噪声。
+
+.. _图8.8:
+
+.. figure:: images/thinkdsp047.png
+    :alt: Autocorrelation functions computed by NumPy and fft_correlate
+    :align: center
+
+    图8.8： 使用 ``fft_correlate`` 和 ``np.correlate`` 的计算结果
 
 
 
