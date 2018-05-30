@@ -75,7 +75,7 @@
 
 .. _图9.3:
 
-.. figure:: images/thinkdsp049.png
+.. figure:: images/thinkdsp050.png
     :alt: Filters corresponding to the diff and differentiate operators (left) 
         and integration operator (right, log-y scale)
     :align: center
@@ -85,19 +85,160 @@
 9.3 微分
 -------------
 
+上一节我们用到的差分窗其实是一阶微分的数值近似，因此滤波效果和微分也是近似的。
 
+时域的微分在频域上也相当于一个滤波器，下面我们会用一些数学推导来说明这一点。
 
+假设我们有一个频率为 *f* 的复指数信号：
 
+.. math::
 
+    {E_f}(t) = {e^{2\pi ift}}
 
+它的一阶微分是：
 
+.. math::
 
+    \frac{d}{{dt}}{E_f}(t) = 2\pi if{e^{2\pi ift}}
 
+这个式子又可以写成：
 
+.. math::
 
+    \frac{d}{{dt}}{E_f}(t) = 2\pi if{E_f}(t)
 
+也就是说，对复指数信号进行微分等价于乘以 :math:`2\pi if` ，
+这个一个模为 :math:`2\pi f` 相角为 :math:`2\pi` 的复数。
 
+因此，我们可以构造如下的滤波器来代替微分运算::
 
+    deriv_filter = close.make_spectrum()
+    deriv_filter.hs = PI2 * 1j * deriv_filter.fs
+
+为了和之前的数据长度和采样率保持一致，这里我先使用了 ``close`` 的频谱数据，
+然后将它的 ``hs`` 替换为了  :math:`2\pi if` 。 如 `图9.3` 左图所示，
+它是一条直线。
+
+如 :ref:`7.4 <7.4 使用矩阵进行合成>` 所述，复指数信号乘以一个复数实际上产生了两种效果：
+一是乘以一个幅值，这里是  :math:`2\pi f` ；二是移动一个初始相位，这里是  :math:`2\pi` 。
+
+如果你了解特征函数的话，复指数函数实际上就是微分算子的特征函数，
+对应的特征值是  :math:`2\pi if` 。参见 http://en.wikipedia.org/wiki/Eigenfunction 。
+
+如果你对此不熟悉，下面我会简单的解释一下它的含义：
+
+* 算子是指从一个函数到另一个函数的映射关系。例如微分就是一个算子。
+
+* 对于算子 *A* 和函数 *g* ，如果将 *A* 应用到 *g* 的结果
+    与 *g* 本身乘以一个标量值 :math:`\lambda` 相等，即 :math:`Ag = \lambda g` ，
+    那么我们称 *g* 是 *A* 的特征函数。
+
+* 相对应的，我们称标量 :math:`\lambda` 为特征函数 *g* 的特征值。
+
+* 一个给定的算子可以有多个特征函数，每个特征函数均对应一个特征值。
+
+由于复指数信号是微分算子的特征函数，因此我们可以很容易的通过乘以一个复数来计算它的微分。
+
+而对于包含多个频率成分的信号来说，要稍微复杂一些：
+
+1. 将信号表示成不同频率的复指数信号之和。
+
+2. 计算每个频率成分的微分（乘法）
+
+3. 将不同频率的微分结果累加
+
+上面的过程看起来和 :ref:`8.6 <8.6 高效的卷积>` 中卷积的算法是一样的，先计算DFT，然后运用一个滤波器，
+然后再进行IDFT。
+
+``spectrum`` 类中提供了一个方法来计算差分滤波::
+
+    # class Spectrum:
+
+        def differentiate(self):
+            self.hs *= PI2 * 1j * self.fs
+
+我们可以使用这个方法来计算Facebook数据的微分::
+
+    deriv_spectrum = close.make_spectrum()
+    deriv_spectrum.differentiate()
+    deriv = deriv_spectrum.make_wave()
+
+`图9.4`_ 比较了使用差分 ``np.diff`` 和微分分别计算每日价格变化的曲线。
+为了让结果显示的更清晰，这里我们截取了前50个元素来作图。
+
+.. _图9.4:
+
+.. figure:: images/thinkdsp051.png
+    :alt: Comparison of daily price changes computed by np.diff 
+        and by applying the differentiation filter.
+    :align: center
+
+    图9.4： 差分和微分操作的效果比较
+
+图中可以看出，微分的结果更接近于噪声，因为它的高频分量的幅值更大一些，见 `图9.3`_ 左图。
+而且它的前面几个值比后面噪声的程度更大，这是由于使用DFT的微分是基于周期性假设的，它将信号
+首尾相连而导致了在边界上的不连续。
+
+总结一下，我们展示了：
+
+* 计算相邻元素值之间的差分的方法，它又可以表示成对信号进行一个简单的卷积操作。最后的结果为一阶微分的近似值。
+
+* 时域上的微分相当于频域上的一个滤波器。对于周期信号，它的结果是一阶微分，而对于非周期信号，它的结果近似于一阶微分。
+
+使用DFT来计算微分是求解微分方程的频谱方法的基础，详见 http://en.wikipedia.org/wiki/Spectral_method 。
+对于分析线性时不变系统，这个方法特别有用，我们会在第十章中进行介绍。
+
+9.4 积分
+--------------
+
+上一节中，我们介绍了时域的微分相当于频域的滤波，它将每个频率分量乘以 :math:`2\pi if` 。
+而积分是微分的逆运算，实际上，它相当于把每个频率成分除以 :math:`2\pi if` ，也是一个滤波器。
+
+我们可以这样来计算这个滤波器::
+
+    integ_filter = close.make_spectrum()
+    integ_filter.hs = 1 / (PI2 * 1j * integ_filter.fs)
+
+`图9.3`_ 右图是这个滤波器在对数Y轴坐标下的图像。
+
+``Spectrum`` 类提供了一个方法来计算积分滤波::
+
+    # class Spectrum:
+
+        def integrate(self):
+            self.hs /= PI2 * 1j * self.fs
+
+为了确保这样计算时正确的，我们将它应用到之前的微分的频谱上::
+
+    integ_spectrum = deriv_spectrum.copy()
+    integ_spectrum.integrate()
+
+需要注意的是在 *f=0* 的时候，我们会进行除0操作，那样会引起 *NaN* 
+（表示不是一个数 Not a Number）。为了避免这个问题，我们对频率为0的分量
+进行特殊的处理，让他的值简单的等于0，然后再生成波形::
+
+    integ_spectrum.hs[0] = 0
+    integ_wave = integ_spectrum.make_wave()
+
+`图9.5`_ 中对比了积分运算的结果和原始的数据曲线。显然，积分计算的曲线相当于
+原始曲线向下平移了一些。这是由于我们将 *f=0* 的频率幅值设置成了0，而这代表的是
+信号的直流分量。不过，其实这也没有什么好奇怪的，因此微分操作后我们就完全丢失了直流
+分量的信息，积分运算并不能对这个损失进行恢复。在一定程度上来说，计算结果中的 *NaN*
+又表示了这个元素是未知的。
+
+.. _图9.5:
+
+.. figure:: images/thinkdsp052.png
+    :alt: Comparison of the original time series and the integrated derivative
+    :align: center
+
+    图9.5： 原始信号和经过微分和积分操作后的信号
+
+当然，如果我们知道这个所谓的“积分常数”，那么积分的结果就是一定的，并且可以保证这个积分滤波器
+就是微分滤波器的逆运算。
+
+9.5 累加和
+---------------
 
 
 
