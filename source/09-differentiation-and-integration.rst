@@ -237,20 +237,104 @@
 当然，如果我们知道这个所谓的“积分常数”，那么积分的结果就是一定的，并且可以保证这个积分滤波器
 就是微分滤波器的逆运算。
 
-9.5 累加和
+9.5 累加
 ---------------
 
+之前我们说差分操作是微分的近似，那么累加就是积分的近似。我通过一个锯齿信号来演示这个操作::
 
+    signal = thinkdsp.SawtoothSignal(freq=50)
+    in_wave = signal.make_wave(duration=0.1, framerate=44100)
 
+`图9.6`_ 展示了结果的波形和频谱图。
 
+.. _图9.6:
 
+.. figure:: images/thinkdsp053.png
+    :alt: A sawtooth wave and its spectrum
+    :align: center
 
+    图9.6： 锯齿波形和频谱图
 
+``Spectrum`` 类中提供了一个方法来计算波形的累加并返回一个新的波形::
 
+    # class Wave:
 
+        def cumsum(self):
+            ys = np.cumsum(self.ys)
+            ts = self.ts.copy()
+            return Wave(ys, ts, self.framerate)
 
+我们使用这个方法来计算 ``in_wave`` 的累加结果::
 
+    out_wave = in_wave.cumsum()
+    out_wave.unbias()
 
+`图9.7`_ 展示了结果的波形和频谱图。如果你认真的完成了第二章后面的练习的话，你就会发现这个波形
+与抛物线信号很像。
+
+.. _图9.7:
+
+.. figure:: images/thinkdsp054.png
+    :alt: A parabolic wave and its spectrum
+    :align: center
+
+    图9.7： 抛物线波形和频谱图
+
+抛物线信号的频谱和锯齿信号的频谱相比，幅值的衰减要快很多。第二章中，我们知道锯齿信号的幅值是按照
+*1/f* 的规律衰减的，由于累加操作是积分的近似，而积分滤波的效果也相当于按 *1/f* 的规律衰减。
+因此累加操作后，幅值就近似按照 :math:`1/{f^2}` 衰减了，这和抛物线信号是一致的。
+
+我们可以这样来计算累加操作所对应的滤波器::
+
+    cumsum_filter = diff_filter.copy()
+    cumsum_filter.hs = 1 / cumsum_filter.hs
+
+由于 ``cumsum`` 是 ``diff`` 的逆运算，因此我们将 ``diff_filter`` 的所有值均设置为它的倒数。
+`图9.8`_ 对比了累加和积分的频谱响应图。可见累加确实是积分的近似，只是在高频的时候积分滤波器衰减的
+稍微要快一些。
+
+.. _图9.8:
+
+.. figure:: images/thinkdsp055.png
+    :alt: Filters corresponding to cumulative sum and integration
+    :align: center
+
+    图9.8： 累加和积分滤波的频率响应对比图
+
+为了确保这个滤波器确实和累加操作是一样的效果，我们计算了 ``in_wave`` 和 ``out_wave`` 的频谱比例并进行了对比::
+
+    in_spectrum = in_wave.make_spectrum()
+    out_spectrum = out_wave.make_spectrum()
+    ratio_spectrum = out_spectrum.ratio(in_spectrum, thresh=1)
+
+上面的 ``ratio`` 方法如下::
+
+    def ratio(self, denom, thresh=1):
+        ratio_spectrum = self.copy()
+        ratio_spectrum.hs /= denom.hs
+        ratio_spectrum.hs[denom.amps < thresh] = np.nan
+        return ratio_spectrum
+
+因为当 ``denom.amps`` 很小的时候，相除的结果没太大意义，我们将它直接设置为了 *NaN* 。
+
+`图9.9`_ 中展示了它们的对比结果，可见，它们几乎是一样的。因此，我们可以确信差分滤波器的倒数
+就是累加滤波器。
+
+.. _图9.9:
+
+.. figure:: images/thinkdsp056.png
+    :alt: Filter corresponding to cumulative sum and actual ratios of the before-and-after spectrums
+    :align: center
+
+    图9.9： 累加滤波器的频率响应与累加运算前后频谱比例的对比图
+
+最后，我们来验证卷积定理同样适用于积分滤波器::
+
+    out_wave2 = (in_spectrum * cumsum_filter).make_wave()
+
+结果 ``out_wave2`` 在浮点数精度误差内与我们通过 ``cumsum`` 计算出的 ``out_wave`` 是一样的，
+所以卷积定理在这里也是适用的。
+需要注意的是，这样的验证方法仅仅适用于周期信号。
 
 
 
