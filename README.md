@@ -5,6 +5,7 @@
 后续校对工作需要会陆续进行，希望有兴趣的朋友可以参与进来。
 
 本书目前托管在Read the Docs上：http://thinkdsp-cn.readthedocs.io/zh_CN/latest/
+也可下载[HTML](https://thinkdsp-cn.readthedocs.io/_/downloads/zh_CN/latest/htmlzip/)文档
 
 该中译版以知识共享协议（[Creative Commons Attribution-NonCommercial 3.0 Unported License](https://creativecommons.org/licenses/by-nc/3.0/us/)）发布，你可以自由分享、修改、复制该中译版，但请不要用于商业用途。
 
